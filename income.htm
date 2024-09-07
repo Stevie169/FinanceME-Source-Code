@@ -1,0 +1,197 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="css/jquery-ui.min.css" />
+		<title>sale-income</title>
+		<script type="text/javascript"  src="first.js"></script>
+		<script type="text/javascript"  src="jquery-1.7.2.min.js"></script>
+		<script type="text/javascript"  src="js/jquery-ui.min.js"></script>
+		<script type="text/javascript"  src="js/first.js"></script>
+		<script type="text/javascript">
+		function getCurrentDb(){
+			var db=openDatabase("mydb","1.0","it's my sales DB",2 * 2014 * 1024);
+			return db;
+		}	
+		
+		function initDB(){
+			//alert("initdb begin");
+			var db = getCurrentDb();
+			if(!db){
+				alert("liulanqi not support HTML5 loca DB");
+				return;
+			}
+			
+			db.transaction(function(trans){
+				//trans.executeSql('drop TABLE Income');
+				trans.executeSql("create table if not exists Income (tId text null,tDate text null,tNumber float null )",[],function (trans,result){
+					//alert("initdb is ok")			
+				},function (trans,message){
+					alert("initdb is fail "+ message);
+				});
+			});
+			
+		}
+		
+		$(function(){
+			//日期控件
+			$( "#iDate" ).datepicker()
+			$( "#iDate" ).datepicker( "option", "dateFormat", 'yy-mm-dd' )
+			$( "#iDate" ).datepicker( "option", "showAnim", 'fold');
+			//确认框
+			$( "#dialog" ).dialog({
+				autoOpen: false,
+				duration: 1000
+			});
+
+			$("#iNumber").blur(function (){
+				var txtNumber=$("#iNumber").val();
+				if(txtNumber == null || txtNumber == undefined || txtNumber == ''){
+
+				}else{
+					$("#iNumber").val(Number($("#iNumber").val()).toFixed(2))
+				}
+
+			});
+
+			$("#iNumber").on("focus",function (){
+				$(this).focus()
+			});
+
+			initDB();
+			$("#Add").click(function(){
+
+				//alert("onclick");
+				var txtDate=$("#iDate").val();
+				if(txtDate == null || txtDate == undefined || txtDate == ''){
+					$('#warn_info').text("Please input Date")
+					$( "#dialog" ).dialog( "open" )
+					return
+				}
+
+				var txtNumber=$("#iNumber").val();
+				if(txtNumber == null || txtNumber == undefined || txtNumber == ''){
+					$('#warn_info').text("Please input Amount")
+					$( "#dialog" ).dialog( "open" )
+					$("#iNumber").focus()
+					return
+				}
+				if(txtNumber <= 0 ){
+					$('#warn_info').text("Amount must be more than zero !")
+					$( "#dialog" ).dialog( "open" )
+					return
+				}
+
+				var db=getCurrentDb();
+				var uuid = generateUUID()
+				db.transaction(function(ts){
+					ts.executeSql('INSERT INTO Income (tId,tDate, tNumber) VALUES (?,?,?)',[uuid,txtDate,txtNumber],function (ts,data){
+						$('#warn_info').text("Add record is OK ! ")
+						$( "#dialog" ).dialog( "open" )
+						setTimeout(function (){window.location.href="search-income.htm";},500)
+					},function (ts,message){
+						console.log(message)
+						$('#warn_info').text("Add record is fail, "+message)
+						$( "#dialog" ).dialog( "open" )
+					})
+				});			
+				
+			});
+		});
+		
+		
+		//function showAllTheData			
+		</script>
+		
+		<style>
+		.button_demo {
+		    -webkit-transition-duration: 0.4s;
+		    transition-duration: 0.4s;
+		    padding: 10px;
+		    text-align: center;
+		    background-color: #0077ED;
+		    color: white;
+		    border: 2px solid #0077ED;
+		    border-radius:5px;
+		    font-size: 12px;
+		}
+		.button_demo:hover {
+		    background-color: white;
+		    color: #0077ED;
+		}				
+		.button_del:hover {
+		    background-color: black;
+		    color: white;
+		    border: 2px solid #2E8B57;
+		}
+		
+		
+		.footer_bg
+		{
+			width: 100%;
+			/*background-color: #204b6d;*/
+			background-color:#000000;
+			height: 90px;
+			clear: both;
+			margin-bottom: 2px;
+			/*margin-top: 50px;*/
+		}
+		
+		.foot_cont
+		{
+			width: 990px;
+			margin: auto;
+			padding-top: 6px;
+		}
+		
+		.foot_cont p
+		{
+			color: #BDB8AF;
+			font-size: 12px;
+			font-family: "Arial";
+			padding-top: 5px;
+			text-align: center;
+		}
+		.dialog{
+			margin-top: 20px;
+		}
+		</style>
+	</head>
+
+	<body>
+		<font face="Arial">
+		<div style="margin-top: 80px;height:60px;">
+		    <center><h3>Please add income record</h3></center>
+		</div> 
+		<div>
+			<center>
+				<table border="0" style="width:350px; height:200px;">
+					<tr>
+						<td style="text-align: center;">income date:</td>
+						<td><input readonly id="iDate" type="text"></td>
+					</tr>
+					<tr>
+						<td style="text-align: center;">amount:</td>
+						<td><input id="iNumber" min="0.00" value="0.00" type="number"></td>
+					</tr>
+				</table>
+				<div style="margin-top: 30px;height:120px;">
+				<button id="Add" class="button_demo" style="width:200px; height:50px;">Add record</button>&nbsp;&nbsp;
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:location.reload();">Reset page</button>&nbsp;&nbsp;
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:window.location.href='home.htm';">Back Home</button>			
+				</div>			
+			</center>
+		</div>
+		<div id="dialog" title="Finance ME">
+			<p id="warn_info">
+
+			</p>
+		</div>
+		<div class="footer_bg">
+	    <div class="foot_cont">
+		   <p>Copyright &copy; Ideal 2023 All Rights Reserved</p>
+	       <p>Designed by Ideal David(21485)</p>
+		</div>
+		</div>
+		</font>
+	</body>
+</html>

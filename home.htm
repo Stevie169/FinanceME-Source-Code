@@ -1,0 +1,301 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>sale-homepage</title>
+		<link rel="stylesheet" href="css/jquery-ui.min.css" />
+		<script type="text/javascript" src="jquery-1.7.2.min.js"></script>
+		<script type="text/javascript"  src="js/jquery-ui.min.js"></script>
+		<script src="js/chart.js"></script>
+		<script type="text/javascript">
+			
+		function getCurrentDb(){
+			var db=openDatabase("mydb","1.0","it's my sales DB",2 * 2014 * 1024);				
+			return db;
+		}
+		
+		$(function(){
+			var db=getCurrentDb();
+			db.transaction(function(trans){
+				trans.executeSql("create table if not exists Income (tId text null,tDate text null,tNumber float null )",[],function (trans,result){
+					//alert("initdb is ok")			
+				},function (trans,message){
+					alert("initdb is fail "+ message);
+				});
+			});
+			
+			db.transaction(function(trans){
+				trans.executeSql("create table if not exists Spending (tId text null,tDate text null,tNumber float null , tType text null )",[],function (trans,result){
+					//alert("initdb is ok")			
+				},function (trans,message){
+					alert("initdb is fail "+ message);
+				});
+			});
+			
+			var total_spending =0.00;
+			var total_Income = 0.00;
+			var total_balance = 0.00;
+			db.transaction(function(ts){
+				ts.executeSql("select sum(tNumber) as total from Income",[],function (ts,result){					
+					var num= result.rows.length;
+					var note = "<td style=\"text-align: center;\"><b>Total Income: </b></td>";					
+					if (num > 0) {
+						for (var i = 0; i < num; i++) {
+							item = result.rows.item(i);
+							if(item["total"] == null)
+								note += "<td>$0.00</td>";
+							else{	
+								total_Income = parseFloat(item["total"]).toFixed(2);
+								note += "<td><a href='search-income.htm'>$" + total_Income + "</a></td>";
+							}
+						}
+					}
+					else{
+						note += "<td>$0.00</td>";	
+					}
+					//note+= "<td style=\"text-align: center;\" rowspan=\"4\"><img src=\"bin.png\" style=\"height:250px;\"></img></td>"
+					$("#list1").prepend(note);					
+				},function (ts,message){
+					alert("sum Income is fail "+message);
+				})
+			});
+			
+			db.transaction(function(ts){
+				ts.executeSql("select sum(tNumber) as total from Spending",[],function (ts,result){
+					var num= result.rows.length;
+					var note = "<td style=\"text-align: center;\"><b>Total Spending: </b></td>";					
+					//alert("Income table have "+num+" records");					
+					if (num > 0) {
+						for (var i = 0; i < num; i++) {
+							item = result.rows.item(i);
+							if(item["total"] == null)
+								note += "<td>$0.00</td>";
+							else{
+								total_spending = parseFloat(item["total"]).toFixed(2);
+								note += "<td><a href='search-spending.htm'>$" + total_spending + "</a></td>";
+							}
+						}
+					}
+					else{
+						note += "<td>$0.00</td>";	
+					}
+					$("#list2").append(note);
+					total_balance=parseFloat(total_Income)-parseFloat(total_spending);
+					var note = "<td style=\"text-align: center;\"><b>Balance: </b></td><td>$"+parseFloat(total_balance).toFixed(2)+"</td>";
+					$("#list3").append(note);
+					//$("#list").listview("refresh");
+					if(total_Income <= 0){
+						$("#myChart").css("display","none")
+						$(".yuan").css("display","block")
+					}else{
+						const ctx = document.getElementById('myChart');
+						const data = {
+							labels: [
+								'Spending',
+								'Balance'
+							],
+							datasets: [{
+								label: 'Pie Chart Demo',
+								//data: [total_spending, total_Income],
+								data: [Number(total_spending).toFixed(2), Number(total_balance).toFixed(2)],
+								backgroundColor: [
+									'rgb(255, 99, 132)',
+									'rgb(54, 162, 235)'
+								],
+								hoverOffset: 4
+							}]
+						};
+						const config = {
+							type: 'pie',
+							data: data,
+							options: {
+								responsive: true, // 设置图表为响应式，根据屏幕窗口变化而变化
+								maintainAspectRatio: false,// 保持图表原有比例
+								scales: {
+									yAxes: [{
+										ticks: {
+											beginAtZero:true
+										}
+									}]
+								}
+							}
+						};
+						const myChart = new Chart(ctx, config);
+						$("#myChart").css("display","block")
+					}
+				},function (ts,message){
+					alert("sum Income is fail "+message);
+				})
+
+
+			});
+
+
+
+
+
+			//确认框
+			$( "#dialog" ).dialog({
+				autoOpen: false
+			});
+			$( "#dialog-confirm" ).dialog({
+				resizable: false,
+				height:240,
+				modal: false,
+				autoOpen: false,
+				buttons: {
+					"Yes": function() {
+						db.transaction(function(trans){
+							trans.executeSql("drop TABLE Spending ",[],function (trans,result){
+							},function (trans,message){
+								alert("drop Spending is fail "+ message);
+							});
+						});
+
+						db.transaction(function(trans){
+							trans.executeSql("drop TABLE Income ",[],function (trans,result){
+								location.reload();
+							},function (trans,message){
+								alert("drop Income is fail "+ message);
+							});
+						});
+					},
+					Cancel: function() {
+						$( "#dialog-confirm" ).dialog( "close" )
+					}
+				}
+			});
+			
+						
+			$("#clean").click(function(){
+				$('#confirm_info').text("Are you sure Clean all data? ")
+				$( "#dialog-confirm" ).dialog( "open" )
+			});	
+			
+			
+			$("#Addspending").click(function(){
+				if (total_Income == 0){
+					$('#warn_info').text("You must add Income first!")
+					$( "#dialog" ).dialog( "open" )
+				}
+				else
+				{
+					window.location.href="spending.htm";	
+				}												
+				
+			});	
+						
+		});
+		
+		
+		//function showAllTheData			
+		</script>	
+		
+		<style>
+		a:hover,a:active {
+			color:#aa88ce;
+			text-decoration:none;
+		}
+		
+		.button_demo {
+		    -webkit-transition-duration: 0.4s;
+		    transition-duration: 0.4s;
+		    padding: 10px;
+		    text-align: center;
+		    background-color: #0077ED;
+		    color: white;
+		    border: 2px solid #0077ED;
+		    border-radius:5px;
+		    font-size: 18px;
+		}
+		.button_demo:hover {
+		    background-color: white;
+		    color: #0077ED;
+		}
+		
+		
+		.footer_bg
+		{
+			width: 100%;
+			/*background-color: #204b6d;*/
+			background-color:#000000;
+			height: 90px;
+			clear: both;
+			margin-bottom: 2px;
+			/*margin-top: 50px;*/
+		}
+		
+		.foot_cont
+		{
+			width: 990px;
+			margin: auto;
+			padding-top: 6px;
+		}
+		
+		.foot_cont p
+		{
+			color: #BDB8AF;
+			font-size: 12px;
+			font-family: "Arial";
+			padding-top: 5px;
+			text-align: center;
+		}
+		</style>
+	</head>
+	
+	<body>
+		<font face="Arial">
+		<div style="margin-top:40px;height:380px;">
+		    <center>
+		    <H1><img src="water3.png" style="height:80px;"></img>  Welcome to Finance ME !</H1>
+		    	<hr style="width:80%;color:#204b6d;">
+		    	<table border="0" style="width:580px; margin-top: 50px;">
+					<tr id="list1" >
+						<td style="text-align: center;" rowspan="4">
+							<img class="yuan" src="images/yuan_title.png" style="margin-left:50px;display:none;position: relative;z-index: 1000;"></img>
+							<img class="yuan" src="images/yuan.png" style="margin-left:30px;display:none;height: 250px;margin-top: -20px"></img>
+							<canvas id="myChart" width="250" height="250" style="display:block;"></canvas>
+						</td>
+					</tr>
+					<tr id="list2" >
+						
+					</tr>
+					<tr>
+						<td colspan="2" style="text-align: center;"><hr></td>
+					</tr>
+					<tr id="list3" >
+						
+					</tr>
+				</table>
+			</center>	
+		</div> 
+		<div style="margin-top:80px;height:80px;">
+			<center>
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:window.location.href='income.htm';">Add Income</button>&nbsp;&nbsp;&nbsp;&nbsp;
+				<button id="Addspending" class="button_demo" style="width:200px; height:50px;">Add Spending</button>&nbsp;&nbsp;&nbsp;&nbsp;
+				<button id="clean" class="button_demo" style="width:200px; height:50px;">Clean All</button>
+			</center>			
+		</div>
+		<div class="footer_bg">
+	    <div class="foot_cont">
+		   <p>Copyright &copy; Ideal 2023 All Rights Reserved</p>
+	       <p>Designed by Ideal David(21485)</p>
+		</div>
+		</div>
+		<div id="dialog-confirm" title="Finance ME">
+			<p>
+				<span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;">
+
+				</span>
+				<span id="confirm_info" >
+
+				</span>
+			</p>
+		</div>
+		<div id="dialog" title="Finance ME">
+			<p id="warn_info">
+
+			</p>
+		</div>
+		</font>
+	</body>
+</html>

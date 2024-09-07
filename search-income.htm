@@ -1,0 +1,251 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>sale-search-income</title>
+		<link rel="stylesheet" href="css/jquery-ui.min.css" />
+		<script type="text/javascript"  src="jquery-1.7.2.min.js"></script>
+		<script type="text/javascript"  src="js/jquery-ui.min.js"></script>
+		<script type="text/javascript">
+			
+		function getCurrentDb(){
+			var db=openDatabase("mydb","1.0","it's my sales DB",2 * 2014 * 1024);				
+			return db;
+		}
+		var db ;
+		var tId;
+		var tNum;
+		var oType;
+		function deleteRecord(id,tNumber){
+			tId = id
+			tNum = tNumber
+			oType = 'deleteOne'
+			$('#confirm_info').text("Are you sure delete this record?")
+			$( "#dialog-confirm" ).dialog( "open" )
+
+		}
+
+		$(function(){
+			db=getCurrentDb();
+			
+			//showAllTheData();
+			db.transaction(function(ts){
+				ts.executeSql("select * from Income order by tDate",[],function (ts,result){
+					var num= result.rows.length;
+					var note = "<tr style=\"text-align: center; height:50px;\"><td style=\"width:100px;\">Record</td><td style=\"width:200px;\">Date</td><td style=\"width:200px;\">Amount</td><td style=\"width:150px;\">option</td></tr>	";
+					//alert("Income table have "+num+" records");
+					
+					if (num > 0) {
+						for (var i = 0; i < num; i++) {
+							item = result.rows.item(i);
+							note += "<tr style=\"text-align: center; height:50px;\"><td>"+ (i+1) +"</td><td>" + item["tDate"] + "</td><td>$" + Number(item["tNumber"]).toFixed(2) + "</td><td><button class=\"button_del\" style=\"width:80px; height:20px;\" onclick=\"deleteRecord('"+item["tId"]+"','"+Number(item["tNumber"]).toFixed(2)+"')\">delete</button></td></tr>";
+						}
+					}
+					else{
+						note += "<tr style=\"text-align: center; height:50px;\"><td colspan='4' > Now, here is no records! </td></tr>";	
+					}
+					$("#list").append(note);
+					//$("#list").listview("refresh");						
+				},function (ts,message){
+					$( "#dialog-confirm" ).dialog( "close" )
+					$('#warn_info').text("query Income is fail "+message)
+					$( "#dialog" ).dialog( "open" )
+					//alert("query Income is fail "+message);
+				})
+			});
+			//确认框
+			$( "#dialog" ).dialog({
+				autoOpen: false,
+				duration:1000
+			});
+			$( "#dialog-confirm" ).dialog({
+				resizable: false,
+				height:240,
+				modal: false,
+				autoOpen: false,
+				buttons: {
+					"Yes": function() {
+						if(oType == 'deleteAll'){
+							db.transaction(function(ts){
+								ts.executeSql("select * from Spending",[],function (ts,result){
+									var num= result.rows.length;
+									if (num > 0) {
+										$( "#dialog-confirm" ).dialog( "close" )
+										$('#warn_info').text("There are past Spending data, so You cannot Clean these Income data!")
+										$( "#dialog" ).dialog( "open" )
+										//alert("Here is some Spending data, so You do not Clean these Income data! ");
+									}
+									else{
+										db.transaction(function(trans){
+											trans.executeSql("DELETE FROM Income ",[],function (trans,result){
+												$( "#dialog-confirm" ).dialog( "close" )
+												$('#warn_info').text("delete Income is OK !  ")
+												$( "#dialog" ).dialog( "open" )
+												setTimeout(function (){location.reload();},500)
+											},function (trans,message){
+												$( "#dialog-confirm" ).dialog( "close" )
+												$('#warn_info').text("delete Income is fail "+ message)
+												$( "#dialog" ).dialog( "open" )
+											});
+										});
+									}
+								},function (ts,message){
+									$( "#dialog-confirm" ).dialog( "close" )
+									$('#warn_info').text("query Spending is fail "+message)
+									$( "#dialog" ).dialog( "open" )
+									//alert();
+								})
+							});
+						}else{
+
+							db.transaction(function(ts){
+								ts.executeSql("select sum(tNumber) as spending from Spending",[],function (ts,result){
+									var num= result.rows.length;
+									var spending = parseFloat(result.rows.item(0)['spending']).toFixed(2)
+									db.transaction(function(ts){
+										ts.executeSql("select sum(tNumber) as incomeing from Income",[],function (ts,result){
+											var num= result.rows.length;
+											var incoming = parseFloat(result.rows.item(0)['incomeing']).toFixed(2)
+											if(parseFloat(spending) > parseFloat(incoming) - parseFloat(tNum)){
+												//提示不能删除
+												$( "#dialog-confirm" ).dialog( "close" )
+												$('#warn_info').text("delete this income record will result in a negative balance, so You cannot delete.")
+												$( "#dialog" ).dialog( "open" )
+											}else{
+												db.transaction(function(trans){
+													trans.executeSql("DELETE FROM Income where tId = ? ",[tId],function (trans,result){
+														$( "#dialog-confirm" ).dialog( "close" )
+														$('#warn_info').text("delete Income is OK ! ")
+														$( "#dialog" ).dialog( "open" )
+														setTimeout(function (){location.reload();},500)
+													},function (trans,message){
+														$( "#dialog-confirm" ).dialog( "close" )
+														$('#warn_info').text("delete Income is fail "+ message)
+														$( "#dialog" ).dialog( "open" )
+													});
+												});
+											}
+
+										},function (ts,message){
+
+											//alert();
+										})
+									});
+
+								},function (ts,message){
+
+									//alert();
+								})
+							});
+
+						}
+
+					},
+					Cancel: function() {
+						$( "#dialog-confirm" ).dialog( "close" )
+					}
+				}
+			});
+			$("#delete").click(function(){
+				oType = 'deleteAll'
+				$('#confirm_info').text("Are you sure Clean these Income data?")
+				$( "#dialog-confirm" ).dialog( "open" )
+
+			});
+
+		});
+		
+		
+		//function showAllTheData			
+		</script>	
+		
+		<style>
+		.button_demo {
+		    -webkit-transition-duration: 0.4s;
+		    transition-duration: 0.4s;
+		    padding: 10px;
+		    text-align: center;
+		    background-color: #0077ED;
+		    color: white;
+		    border: 2px solid #0077ED;
+		    border-radius:5px;
+		    font-size: 12px;
+		}
+		.button_demo:hover {
+		    background-color: white;
+		    color: #0077ED;
+		}						
+		.button_del:hover {
+		    background-color: black;
+		    color: white;
+		    border: 2px solid #2E8B57;
+		}
+		
+		
+		.footer_bg
+		{
+			width: 100%;
+			/*background-color: #204b6d;*/
+			background-color:#000000;
+			height: 90px;
+			clear: both;
+			margin-bottom: 2px;
+			/*margin-top: 50px;*/
+		}
+		
+		.foot_cont
+		{
+			width: 990px;
+			margin: auto;
+			padding-top: 6px;
+		}
+		
+		.foot_cont p
+		{
+			color: #BDB8AF;
+			font-size: 12px;
+			font-family: "Arial";
+			padding-top: 5px;
+			text-align: center;
+		}
+		</style>
+	</head>
+	<body>
+		<font face="Arial">
+		<div style="margin-top: 80px;height:50px;">
+		    <center><h3>Please see all income records</h3></center>
+		</div> 
+		<div>
+			<center>
+				<table id="list" border="1px">
+				</table>
+				<div style="margin-top: 50px;height:120px;">
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:window.location.href='income.htm';">Add Income</button>&nbsp;&nbsp;
+				<button id="delete" class="button_demo" style="width:200px; height:50px;">Clean Income</button>&nbsp;&nbsp;
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:window.location.href='home.htm';">Back Home</button>				
+				</div>								
+			</center>
+		</div>
+		<div class="footer_bg">
+	    <div class="foot_cont">
+		   <p>Copyright &copy; Ideal 2023 All Rights Reserved</p>
+	       <p>Designed by Ideal David(21485)</p>
+		</div>
+		</div>
+		<div id="dialog-confirm" title="Finance ME">
+			<p>
+				<span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;">
+
+				</span>
+				<span id="confirm_info" >
+
+				</span>
+			</p>
+		</div>
+		<div id="dialog" title="Finance ME">
+			<p id="warn_info">
+
+			</p>
+		</div>
+		</font>
+	</body>
+</html>

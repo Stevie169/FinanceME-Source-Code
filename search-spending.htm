@@ -1,0 +1,329 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>sale-search-spending</title>
+		<link rel="stylesheet" href="css/jquery-ui.min.css" />
+		<script type="text/javascript"  src="jquery-1.7.2.min.js"></script>
+		<script type="text/javascript"  src="js/jquery-ui.min.js"></script>
+		<script type="text/javascript"  src="js/apexcharts.js"></script>
+		<script type="text/javascript">
+			
+		function getCurrentDb(){
+			var db=openDatabase("mydb","1.0","it's my sales DB",2 * 2014 * 1024);				
+			return db;
+		}
+		var tId;
+		var oType;
+		function deleteRecord(id){
+			tId = id
+			oType = 'deleteOne'
+			$('#confirm_info').text("Are you sure delete this record?")
+			$( "#dialog-confirm" ).dialog( "open" )
+		}
+		var chartData = [0, 0, 0, 0, 0, 0, 0]
+		function loadChart(){
+			//柱状图
+			var colors = [
+				'#008FFB',
+				'#00E396',
+				'#FEB019',
+				'#FF4560',
+				'#775DD0',
+				'#546E7A',
+				'#26a69a'
+			]
+
+			var options = {
+				series: [{
+					data: chartData
+				}],
+				chart: {
+					height: 350,
+					width: 700,
+					type: 'bar',
+					events: {
+						click: function (chart, w, e) {
+							// console.log(chart, w, e)
+						}
+					}
+				},
+				colors: colors,
+				plotOptions: {
+					bar: {
+						columnWidth: '45%',
+						distributed: true,
+					}
+				},
+				dataLabels: {
+					enabled: false
+				},
+				legend: {
+					show: false
+				},
+				xaxis: {
+					categories: [
+						'Food',
+						'Academic',
+						'Leisure',
+						'Travel',
+						'Clothing',
+						'Accommodation',
+						'Other'
+					],
+					labels: {
+						style: {
+							colors: colors,
+							fontSize: '12px'
+						}
+					}
+				}
+			};
+
+			var chart = new ApexCharts(document.querySelector("#chart"), options);
+			chart.render();
+		}
+		$(function(){
+			var db=getCurrentDb();
+			
+			//showAllTheData();
+			db.transaction(function(ts){
+				ts.executeSql("select * from Spending order by tDate",[],function (ts,result){
+					var num= result.rows.length;
+					var note = "<tr style=\"text-align: center; height:50px;\"><td style=\"width:100px;\">Record</td><td style=\"width:200px;\">Date</td><td style=\"width:200px;\">Amount</td><td style=\"width:100px;\">Type</td><td style=\"width:150px;\">option</td></tr>	";
+					//alert("Spending table have "+num+" records");
+					if (num > 0) {
+						for (var i = 0; i < num; i++) {
+							item = result.rows.item(i);
+							note += "<tr style=\"text-align: center; height:50px;\"><td>"+ (i+1) +"</td><td>" + item["tDate"] + "</td><td>$" + Number(item["tNumber"]).toFixed(2) + "</td><td>" + item["tType"] + "</td><td><button class=\"button_del\" style=\"width:80px; height:20px;\" onclick=\"deleteRecord('"+item["tId"]+"')\">delete</button></td></tr>";
+							//计算数据
+							var sType = item["tType"];
+							if(sType == 'Food'){
+								chartData[0] = parseFloat(item["tNumber"])+parseFloat(chartData[0]);
+							}else if(sType == 'Academic'){
+								chartData[1] = parseFloat(item["tNumber"])+parseFloat(chartData[1]);
+							}else if(sType == 'Leisure'){
+								chartData[2] = parseFloat(item["tNumber"])+parseFloat(chartData[2]);
+							}else if(sType == 'Travel'){
+								chartData[3] = parseFloat(item["tNumber"])+parseFloat(chartData[3]);
+							}else if(sType == 'Clothing'){
+								chartData[4] = parseFloat(item["tNumber"])+parseFloat(chartData[4]);
+							}else if(sType == 'Accommodation'){
+								chartData[5] = parseFloat(item["tNumber"])+parseFloat(chartData[5]);
+							}else if(sType == 'Other'){
+								chartData[6] = parseFloat(item["tNumber"])+parseFloat(chartData[6]);
+							}
+						}
+						loadChart()
+					}
+					else{
+						note += "<tr style=\"text-align: center; height:50px;\"><td colspan='5' > Now, here is no records! </td></tr>";	
+					}
+					$("#list").append(note);
+					//$("#list").listview("refresh");						
+				},function (ts,message){
+					$('#warn_info').text("query Spending is fail "+message)
+					$( "#dialog" ).dialog( "open" )
+					//alert("query Spending is fail "+message);
+				})
+			});
+			//确认框
+			$( "#dialog" ).dialog({
+				autoOpen: false
+			});
+			$( "#dialog-confirm" ).dialog({
+				resizable: false,
+				height:240,
+				modal: false,
+				autoOpen: false,
+				buttons: {
+					"Yes": function() {
+						if(oType == 'deleteAll'){
+							db.transaction(function(trans){
+								trans.executeSql("DELETE FROM Spending ",[],function (trans,result){
+									//alert("delete Spending is ok");
+									$( "#dialog-confirm" ).dialog( "close" )
+									$('#warn_info').text("delete Spending is OK !  ")
+									$( "#dialog" ).dialog( "open" )
+									setTimeout(function (){location.reload();},500)
+								},function (trans,message){
+									$('#warn_info').text("delete Spending is fail "+ message)
+									$( "#dialog" ).dialog( "open" )
+									//alert("delete Spending is fail "+ message);
+								});
+							});
+						}else{
+							db.transaction(function(trans){
+								trans.executeSql("DELETE FROM Spending where tId = ? ",[tId],function (trans,result){
+									//alert("delete Income is ok");
+									$( "#dialog-confirm" ).dialog( "close" )
+									$('#warn_info').text("delete Spending is OK ! ")
+									$( "#dialog" ).dialog( "open" )
+									setTimeout(function (){location.reload();},500)
+								},function (trans,message){
+									$('#warn_info').text("delete Income is fail "+ message)
+									$( "#dialog" ).dialog( "open" )
+									//alert("delete Income is fail "+ message);
+								});
+							});
+						}
+
+					},
+					Cancel: function() {
+						$( "#dialog-confirm" ).dialog( "close" )
+					}
+				}
+			});
+			
+			$("#delete").click(function(){
+				oType = 'deleteAll'
+				$('#confirm_info').text("Are you sure Clean these Spending data? ")
+				$( "#dialog-confirm" ).dialog( "open" )
+			});
+			$("#showBar").click(function(){
+				setTimeout(function (){
+					$("#show_bar").css("display","block")
+					$("#show_bar").css("display","none")
+					$("#show_bar").css("display","block")
+					$(".zhezhao").css("display","block")
+				},500)
+
+			});
+
+			$(".closeBar").click(function(){
+				$(".zhezhao").css("display","none")
+				$("#show_bar").css("display","none")
+			});
+
+		});
+		
+		
+		//function showAllTheData			
+		</script>	
+		
+		<style>
+		a:hover,a:active {
+			color:#aa88ce;
+			text-decoration:none;
+		}
+		
+		
+		.button_demo {
+		    -webkit-transition-duration: 0.4s;
+		    transition-duration: 0.4s;
+		    padding: 10px;
+		    text-align: center;
+		    background-color: #0077ED;
+		    color: white;
+		    border: 2px solid #0077ED;
+		    border-radius:5px;
+		    font-size: 12px;
+		}
+		.button_demo:hover {
+		    background-color: white;
+		    color: #0077ED;
+		}						
+		.button_del:hover {
+		    background-color: black;
+		    color: white;
+		    border: 2px solid #2E8B57;
+		}
+		
+		
+		.footer_bg
+		{
+			width: 100%;
+			/*background-color: #204b6d;*/
+			background-color:#000000;
+			height: 90px;
+			clear: both;
+			margin-bottom: 2px;
+			/*position: absolute;
+			bottom: 0;
+			margin-top: 50px;*/
+			
+		}
+		
+		.foot_cont
+		{
+			width: 990px;
+			margin: auto;
+			padding-top: 6px;
+		}
+		
+		.foot_cont p
+		{
+			color: #BDB8AF;
+			font-size: 12px;
+			font-family: "Arial";
+			padding-top: 5px;
+			text-align: center;
+		}
+		.zhezhao{
+			background-color: #f6f6f6;
+			width: 100%;
+			height: 100%;
+			position: fixed;
+			top: 0;
+			opacity: 0.8;
+			display: none;
+		}
+		</style>
+	</head>
+	
+	<body>
+		<font face="Arial">
+		<div style="margin-top: 80px;height:50px;">
+		    <center><h3>Please see all spending records</h3></center>
+		</div> 
+		<div>
+			<center>
+			<p style="text-align:right; width:650px;"><a href="javascript:void(0)" id="showBar"><b> Type Bar show </b></a></p>
+				<table id="list" border="1px">
+					
+				</table>
+				<div style="margin-top: 50px;height:120px;">
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:window.location.href='spending.htm';">Add Spending</button>&nbsp;&nbsp;
+				<button id="delete" class="button_demo" style="width:200px; height:50px;" onclick="">Clean Spending</button>&nbsp;&nbsp;
+				<button class="button_demo" style="width:200px; height:50px;" onclick="javascript:window.location.href='home.htm';">Back Home</button>				
+				</div>								
+			</center>
+		</div>
+		<div class="footer_bg">
+	    <div class="foot_cont">
+		   <p>Copyright &copy; Ideal 2023 All Rights Reserved</p>
+	       <p>Designed by Ideal David(21485)</p>
+		</div>
+		</div>
+		<div id="dialog-confirm" title="Finance ME">
+			<p>
+				<span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;">
+
+				</span>
+				<span id="confirm_info" >
+
+				</span>
+			</p>
+		</div>
+		<div id="dialog" title="Finance ME">
+			<p id="warn_info">
+
+			</p>
+		</div>
+		<div class="zhezhao">
+
+		</div>
+		<div id="show_bar" style="display:none;height:450px;background-color: white;z-index:1000;position: fixed;top: 180px;left:50%;margin-left: -400px;width: 800px;">
+			<div style="width: 100%;text-align: center;margin-top: 20px;font-size: 16px;position: relative">
+				Type Bar show
+				<img class="closeBar" src="images/关闭.png" style="cursor:pointer; position: absolute;width: 20px;height: 20px;right: 23px">
+			</div>
+			<div>
+				<div id="chart" style="background-color:white;margin: auto;margin-left: 50px;margin-top: 20px;">
+
+				</div>
+			</div>
+
+		</div>
+		</font>
+	</body>
+</html>
